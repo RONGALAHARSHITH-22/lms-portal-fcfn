@@ -1,0 +1,70 @@
+@keyframes float {
+  0% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-15px) rotate(1deg);
+  }
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+}
+
+.ship-card {
+  animation: float 4s ease-in-out infinite;
+  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ship-card:hover {
+  animation-play-state: paused;
+  transform: scale(1.05) translateY(-10px);
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.ship-delay-1 {
+  animation-delay: -1.5s;
+}
+
+.nav-link {
+  color: #f8fafc;
+  transition: color 0.3s ease;
+}
+
+.nav-link:hover {
+  color: #60a5fa;
+}
+
+.nav-link-active {
+  color: #93c5fd;
+}
+
+.cabin-log {
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 0.75rem;
+  padding: 0.9rem 1rem;
+  background: rgba(15, 23, 42, 0.4);
+}
+
+.ship-input {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 0.75rem;
+  padding: 0.7rem 0.9rem;
+  background: rgba(15, 23, 42, 0.55);
+  color: #f8fafc;
+  outline: none;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.ship-input:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.25);
+}
+
+.ocean {
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  overflow: hidden;
+}

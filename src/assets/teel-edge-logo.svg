@@ -1,0 +1,17 @@
+<svg width="920" height="220" viewBox="0 0 920 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="920" height="220" fill="transparent"/>
+
+  <path d="M42 94C74 52 126 33 188 38" stroke="#19B7E9" stroke-width="12" stroke-linecap="round"/>
+  <path d="M174 30L205 43L178 65" fill="#19B7E9"/>
+
+  <text x="66" y="162" font-family="Arial, Helvetica, sans-serif" font-size="132" font-weight="900" fill="#050608" letter-spacing="2">
+    TEAL
+  </text>
+
+  <rect x="456" y="53" width="120" height="120" fill="#19B7E9"/>
+  <path d="M480 146L516 86L552 146H531L519 124H513L501 146H480Z" fill="#2A3341"/>
+
+  <text x="586" y="162" font-family="Arial, Helvetica, sans-serif" font-size="132" font-weight="900" fill="#050608" letter-spacing="2">
+    DGE
+  </text>
+</svg>
