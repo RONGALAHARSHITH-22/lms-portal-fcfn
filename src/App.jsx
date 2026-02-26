@@ -2,7 +2,7 @@ import { useState } from 'react'
 import './App.css'
 import teelEdgeLogo from './assets/teel-edge-logo.svg'
 
-const ADMIN_SIGNUP_KEY = 'FSAD'
+const ADMIN_SIGNUP_KEY = 'FASD'
 
 function App() {
   const [boarding, setBoarding] = useState(false)
@@ -86,17 +86,6 @@ function App() {
     if (signupForm.role === 'admin') {
       if (signupForm.adminKey !== ADMIN_SIGNUP_KEY) {
         setAuthMessage('Invalid admin signup key.')
-        return
-      }
-
-      if (!signupForm.email.trim().toLowerCase().endsWith('@tealedge.com')) {
-        setAuthMessage('Admin signup requires a @tealedge.com email.')
-        return
-      }
-
-      const strongAdminPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{10,}$/
-      if (!strongAdminPassword.test(signupForm.password)) {
-        setAuthMessage('Admin password must be at least 10 chars with uppercase, lowercase, number, and symbol.')
         return
       }
     }
@@ -302,7 +291,7 @@ function App() {
                         placeholder="Enter admin invite key"
                       />
                     </label>
-                    <p className="auth-helper">Admin requires @tealedge.com email and a strong password.</p>
+                    <p className="auth-helper">Admin signup requires a valid admin key.</p>
                   </>
                 ) : null}
 
@@ -608,3 +597,4 @@ function App() {
 }
 
 export default App
+
