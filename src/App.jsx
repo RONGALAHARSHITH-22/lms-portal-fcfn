@@ -254,7 +254,7 @@ function App() {
         }`}
       >
         <div className="text-center">
-          <div className="inline-block animate-spin text-4xl mb-4">[Anchor]</div>
+          <div className="inline-block animate-spin text-4xl mb-4" aria-hidden="true"></div>
           <h2 className="text-2xl font-bold tracking-widest animate-pulse">BOARDING VESSEL...</h2>
         </div>
       </div>
@@ -296,7 +296,7 @@ function App() {
             <div className="ship-card p-8 rounded-3xl cursor-pointer group">
               <div className="flex justify-between items-start mb-6">
                 <span className="text-xs font-bold uppercase tracking-widest text-blue-400">Full Stack</span>
-                <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">[Ship]</div>
+                <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center" aria-hidden="true"></div>
               </div>
               <h3 className="text-2xl font-bold mb-2">Advanced React Ops</h3>
               <p className="text-slate-400 text-sm mb-6">
@@ -319,7 +319,7 @@ function App() {
             <div className="ship-card p-8 rounded-3xl cursor-pointer group ship-delay-1">
               <div className="flex justify-between items-start mb-6">
                 <span className="text-xs font-bold uppercase tracking-widest text-purple-400">Database</span>
-                <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">[Anchor]</div>
+                <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center" aria-hidden="true"></div>
               </div>
               <h3 className="text-2xl font-bold mb-2">PostgreSQL Deep Dive</h3>
               <p className="text-slate-400 text-sm mb-6">Query optimization and relational data charting.</p>
