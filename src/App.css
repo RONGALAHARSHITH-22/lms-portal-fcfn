@@ -212,6 +212,42 @@
   font-size: 0.8rem;
 }
 
+.admin-row {
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 0.75rem;
+  padding: 0.8rem 1rem;
+  background: rgba(15, 23, 42, 0.4);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.assignment-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.assignment-toggle {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 0.65rem;
+  background: rgba(15, 23, 42, 0.45);
+  color: #e2e8f0;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.assignment-toggle-done {
+  border-color: rgba(34, 197, 94, 0.8);
+  background: rgba(21, 128, 61, 0.25);
+  color: #dcfce7;
+}
+
 @media (max-width: 840px) {
   .nav-link {
     display: none;

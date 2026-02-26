@@ -1,49 +1,103 @@
-import { useState } from 'react'
+
+import { useMemo, useState } from 'react'
 import './App.css'
 import teelEdgeLogo from './assets/teel-edge-logo.svg'
 
 const ADMIN_SIGNUP_KEY = 'FASD'
 
-function App() {
-  const [boarding, setBoarding] = useState(false)
-  const [currentShip, setCurrentShip] = useState('')
-  const [activePage, setActivePage] = useState('home')
-  const [selectedRole, setSelectedRole] = useState('admin')
+const COURSES = [
+  {
+    id: 'react-ops',
+    title: 'Advanced React Ops',
+    category: 'Frontend',
+    description: 'Master hooks, performance, and scalable React architecture.',
+    materials: [
+      { id: 'm1', title: 'Hooks Deep Dive Notes', type: 'PDF' },
+      { id: 'm2', title: 'Rendering Performance Checklist', type: 'Guide' },
+    ],
+    assignments: [
+      { id: 'a1', title: 'Build reusable hooks library', dueDate: '2026-03-08' },
+      { id: 'a2', title: 'Optimize dashboard render path', dueDate: '2026-03-15' },
+    ],
+  },
+  {
+    id: 'postgres-dive',
+    title: 'PostgreSQL Deep Dive',
+    category: 'Database',
+    description: 'Query optimization, indexing strategy, and data modeling.',
+    materials: [
+      { id: 'm3', title: 'Indexing Patterns Handbook', type: 'PDF' },
+      { id: 'm4', title: 'Explain Analyze Lab', type: 'Worksheet' },
+    ],
+    assignments: [
+      { id: 'a3', title: 'Design optimized schema', dueDate: '2026-03-10' },
+      { id: 'a4', title: 'Tune slow analytics query', dueDate: '2026-03-19' },
+    ],
+  },
+  {
+    id: 'node-nav',
+    title: 'Node.js Navigation',
+    category: 'Backend',
+    description: 'Build secure APIs with auth, validation, and observability.',
+    materials: [{ id: 'm5', title: 'API Security Playbook', type: 'Guide' }],
+    assignments: [{ id: 'a5', title: 'Implement JWT auth flow', dueDate: '2026-03-12' }],
+  },
+]
 
+const normalizeEmail = (email) => email.trim().toLowerCase()
+
+function App() {
+  const [activePage, setActivePage] = useState('home')
+  const [selectedRole, setSelectedRole] = useState('student')
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [currentUser, setCurrentUser] = useState(null)
   const [authView, setAuthView] = useState('login')
   const [authMessage, setAuthMessage] = useState('')
   const [loginForm, setLoginForm] = useState({ email: '', password: '' })
-  const [signupForm, setSignupForm] = useState({ name: '', email: '', password: '', confirmPassword: '', role: 'student', adminKey: '' })
+  const [signupForm, setSignupForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    role: 'student',
+    adminKey: '',
+  })
 
-  const boardShip = (shipName) => {
-    setBoarding(true)
+  const [accounts, setAccounts] = useState([])
+  const [enrollments, setEnrollments] = useState([])
 
-    window.setTimeout(() => {
-      setCurrentShip(shipName)
-      setBoarding(false)
-    }, 1200)
-  }
+  const isAdmin = currentUser?.role === 'admin'
 
-  const openFleetAdmin = () => {
-    setActivePage('fleet')
-    setCurrentShip('')
-  }
+  const studentEnrollments = useMemo(() => {
+    if (!currentUser || isAdmin) return []
+    return enrollments.filter((e) => e.studentEmail === currentUser.email)
+  }, [enrollments, currentUser, isAdmin])
 
-  const openHome = () => {
-    setActivePage('home')
-    setCurrentShip('')
-  }
+  const studentStats = useMemo(() => {
+    if (!currentUser || isAdmin) return { total: 0, completed: 0 }
 
-  const openMyCabin = () => {
-    setActivePage('cabin')
-    setCurrentShip('')
-  }
+    let total = 0
+    let completed = 0
 
-  const openNewShip = () => {
-    setActivePage('new-ship')
-    setCurrentShip('')
-  }
+    for (const enr of studentEnrollments) {
+      const course = COURSES.find((c) => c.id === enr.courseId)
+      if (!course) continue
+      total += course.assignments.length
+      completed += enr.completedAssignmentIds.length
+    }
+
+    return { total, completed }
+  }, [studentEnrollments, currentUser, isAdmin])
+
+  const courseEnrollmentCounts = useMemo(() => {
+    return COURSES.reduce((acc, course) => {
+      acc[course.id] = enrollments.filter((e) => e.courseId === course.id).length
+      return acc
+    }, {})
+  }, [enrollments])
+
+  const totalStudents = accounts.filter((a) => a.role === 'student').length
+  const totalCompletedAssignments = enrollments.reduce((acc, e) => acc + e.completedAssignmentIds.length, 0)
 
   const updateLoginForm = (event) => {
     const { name, value } = event.target
@@ -55,25 +109,15 @@ function App() {
     setSignupForm((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleLogin = (event) => {
-    event.preventDefault()
-
-    if (!loginForm.email.trim() || !loginForm.password.trim()) {
-      setAuthMessage('Please enter both email and password.')
-      return
-    }
-
-    setAuthMessage('')
-    setIsAuthenticated(true)
-    setActivePage('home')
-    setCurrentShip('')
-    setLoginForm({ email: '', password: '' })
-  }
-
   const handleSignup = (event) => {
     event.preventDefault()
 
-    if (!signupForm.name.trim() || !signupForm.email.trim() || !signupForm.password.trim()) {
+    const name = signupForm.name.trim()
+    const email = normalizeEmail(signupForm.email)
+    const password = signupForm.password.trim()
+    const role = signupForm.role
+
+    if (!name || !email || !password) {
       setAuthMessage('Please complete all required fields.')
       return
     }
@@ -83,28 +127,100 @@ function App() {
       return
     }
 
-    if (signupForm.role === 'admin') {
-      if (signupForm.adminKey !== ADMIN_SIGNUP_KEY) {
-        setAuthMessage('Invalid admin signup key.')
-        return
-      }
+    const existing = accounts.find((account) => account.email === email)
+
+    if (role === 'student' && existing?.role === 'student') {
+      setAuthMessage('This student is already registered. Please login instead.')
+      return
     }
 
+    if (existing) {
+      setAuthMessage(`An account with this email already exists as ${existing.role}.`)
+      return
+    }
+
+    if (role === 'admin' && signupForm.adminKey !== ADMIN_SIGNUP_KEY) {
+      setAuthMessage('Invalid admin signup key.')
+      return
+    }
+
+    setAccounts((prev) => [...prev, { name, email, password, role }])
     setSignupForm({ name: '', email: '', password: '', confirmPassword: '', role: 'student', adminKey: '' })
     setAuthView('login')
-    setSelectedRole(signupForm.role)
-    setAuthMessage(`${signupForm.role === 'admin' ? 'Admin' : 'Student'} signup successful. Please log in to continue.`)
+    setSelectedRole(role)
+    setAuthMessage(`${role === 'admin' ? 'Admin' : 'Student'} signup successful. Please login.`)
+  }
+
+  const handleLogin = (event) => {
+    event.preventDefault()
+
+    const email = normalizeEmail(loginForm.email)
+    const password = loginForm.password.trim()
+
+    if (!email || !password) {
+      setAuthMessage('Please enter both email and password.')
+      return
+    }
+
+    const account = accounts.find((a) => a.email === email)
+
+    if (!account) {
+      setAuthMessage('No account found with this email. Please signup first.')
+      return
+    }
+
+    if (account.role !== selectedRole) {
+      setAuthMessage(`This account is ${account.role}. Please pick ${account.role} role.`)
+      return
+    }
+
+    if (account.password !== password) {
+      setAuthMessage('Incorrect password.')
+      return
+    }
+
+    setCurrentUser(account)
+    setIsAuthenticated(true)
+    setActivePage('home')
+    setLoginForm({ email: '', password: '' })
+    setAuthMessage('')
   }
 
   const handleLogout = () => {
     setIsAuthenticated(false)
+    setCurrentUser(null)
     setAuthView('login')
+    setActivePage('home')
     setAuthMessage('You have been logged out.')
-    setLoginForm({ email: '', password: '' })
-    setSignupForm({ name: '', email: '', password: '', confirmPassword: '', role: 'student', adminKey: '' })
   }
 
-  const isAdmin = selectedRole === 'admin'
+  const getEnrollment = (studentEmail, courseId) =>
+    enrollments.find((e) => e.studentEmail === studentEmail && e.courseId === courseId)
+
+  const handleEnroll = (courseId) => {
+    if (!currentUser || isAdmin) return
+    if (getEnrollment(currentUser.email, courseId)) return
+
+    setEnrollments((prev) => [...prev, { studentEmail: currentUser.email, courseId, completedAssignmentIds: [] }])
+  }
+
+  const toggleAssignmentCompletion = (courseId, assignmentId) => {
+    if (!currentUser || isAdmin) return
+
+    setEnrollments((prev) =>
+      prev.map((e) => {
+        if (e.studentEmail !== currentUser.email || e.courseId !== courseId) return e
+
+        const done = e.completedAssignmentIds.includes(assignmentId)
+        return {
+          ...e,
+          completedAssignmentIds: done
+            ? e.completedAssignmentIds.filter((id) => id !== assignmentId)
+            : [...e.completedAssignmentIds, assignmentId],
+        }
+      }),
+    )
+  }
 
   if (!isAuthenticated) {
     return (
@@ -115,7 +231,7 @@ function App() {
               <img src={teelEdgeLogo} alt="TealEdge logo" className="h-14 w-auto" />
             </div>
             <h1 className="auth-title">TealEdge Fleet Portal</h1>
-            <p className="auth-subtitle">Sign in to command your fleet or create a new captain account.</p>
+            <p className="auth-subtitle">Login or signup to access the portal.</p>
           </div>
 
           <section className="ship-card p-8 rounded-3xl auth-card">
@@ -166,47 +282,9 @@ function App() {
                   </div>
                 </div>
 
-                <label className="block">
-                  <span className="text-sm text-slate-300">Email</span>
-                  <input
-                    className="ship-input mt-2 w-full"
-                    type="email"
-                    name="email"
-                    value={loginForm.email}
-                    onChange={updateLoginForm}
-                    placeholder="captain@tealedge.com"
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="text-sm text-slate-300">Password</span>
-                  <input
-                    className="ship-input mt-2 w-full"
-                    type="password"
-                    name="password"
-                    value={loginForm.password}
-                    onChange={updateLoginForm}
-                    placeholder="Enter your password"
-                  />
-                </label>
-
-                <button type="submit" className="auth-submit">
-                  Login
-                </button>
-
-                <p className="auth-switch">
-                  New here?{' '}
-                  <button
-                    type="button"
-                    className="auth-switch-link"
-                    onClick={() => {
-                      setAuthView('signup')
-                      setAuthMessage('')
-                    }}
-                  >
-                    Create an account
-                  </button>
-                </p>
+                <input className="ship-input" type="email" name="email" value={loginForm.email} onChange={updateLoginForm} placeholder="Email" />
+                <input className="ship-input" type="password" name="password" value={loginForm.password} onChange={updateLoginForm} placeholder="Password" />
+                <button type="submit" className="auth-submit">Login</button>
               </form>
             ) : (
               <form className="auth-form" onSubmit={handleSignup}>
@@ -230,88 +308,23 @@ function App() {
                   </div>
                 </div>
 
-                <label className="block">
-                  <span className="text-sm text-slate-300">Full Name</span>
-                  <input
-                    className="ship-input mt-2 w-full"
-                    type="text"
-                    name="name"
-                    value={signupForm.name}
-                    onChange={updateSignupForm}
-                    placeholder="Captain Name"
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="text-sm text-slate-300">Email</span>
-                  <input
-                    className="ship-input mt-2 w-full"
-                    type="email"
-                    name="email"
-                    value={signupForm.email}
-                    onChange={updateSignupForm}
-                    placeholder="captain@tealedge.com"
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="text-sm text-slate-300">Password</span>
-                  <input
-                    className="ship-input mt-2 w-full"
-                    type="password"
-                    name="password"
-                    value={signupForm.password}
-                    onChange={updateSignupForm}
-                    placeholder="Create a password"
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="text-sm text-slate-300">Confirm Password</span>
-                  <input
-                    className="ship-input mt-2 w-full"
-                    type="password"
-                    name="confirmPassword"
-                    value={signupForm.confirmPassword}
-                    onChange={updateSignupForm}
-                    placeholder="Repeat your password"
-                  />
-                </label>
+                <input className="ship-input" type="text" name="name" value={signupForm.name} onChange={updateSignupForm} placeholder="Full Name" />
+                <input className="ship-input" type="email" name="email" value={signupForm.email} onChange={updateSignupForm} placeholder="Email" />
+                <input className="ship-input" type="password" name="password" value={signupForm.password} onChange={updateSignupForm} placeholder="Password" />
+                <input
+                  className="ship-input"
+                  type="password"
+                  name="confirmPassword"
+                  value={signupForm.confirmPassword}
+                  onChange={updateSignupForm}
+                  placeholder="Confirm Password"
+                />
 
                 {signupForm.role === 'admin' ? (
-                  <>
-                    <label className="block">
-                      <span className="text-sm text-slate-300">Admin Signup Key</span>
-                      <input
-                        className="ship-input mt-2 w-full"
-                        type="password"
-                        name="adminKey"
-                        value={signupForm.adminKey}
-                        onChange={updateSignupForm}
-                        placeholder="Enter admin invite key"
-                      />
-                    </label>
-                    <p className="auth-helper">Admin signup requires a valid admin key.</p>
-                  </>
+                  <input className="ship-input" type="password" name="adminKey" value={signupForm.adminKey} onChange={updateSignupForm} placeholder="Admin Signup Key" />
                 ) : null}
 
-                <button type="submit" className="auth-submit">
-                  Signup
-                </button>
-
-                <p className="auth-switch">
-                  Already have an account?{' '}
-                  <button
-                    type="button"
-                    className="auth-switch-link"
-                    onClick={() => {
-                      setAuthView('login')
-                      setAuthMessage('')
-                    }}
-                  >
-                    Login here
-                  </button>
-                </p>
+                <button type="submit" className="auth-submit">Signup</button>
               </form>
             )}
           </section>
@@ -322,48 +335,22 @@ function App() {
 
   return (
     <div className="ocean text-white min-h-screen font-sans">
-      <div
-        id="boarding-overlay"
-        className={`fixed inset-0 z-50 pointer-events-none transition-all duration-700 bg-slate-900/90 flex items-center justify-center ${
-          boarding ? 'opacity-100' : 'opacity-0'
-        }`}
-      >
-        <div className="text-center">
-          <div className="inline-block animate-spin text-4xl mb-4" aria-hidden="true"></div>
-          <h2 className="text-2xl font-bold tracking-widest animate-pulse">BOARDING VESSEL...</h2>
-        </div>
-      </div>
-
       <nav className="p-6 flex justify-between items-center border-b border-white/10">
         <div className="bg-white/95 rounded-lg px-3 py-2">
           <img src={teelEdgeLogo} alt="TealEdge logo" className="h-12 w-auto" />
         </div>
         <div className="space-x-8 flex items-center">
-          <button
-            onClick={openHome}
-            className={`nav-link ${activePage === 'home' ? 'nav-link-active' : ''}`}
-          >
+          <button onClick={() => setActivePage('home')} className={`nav-link ${activePage === 'home' ? 'nav-link-active' : ''}`}>
             {isAdmin ? 'Admin Home' : 'Student Home'}
           </button>
           {isAdmin ? (
-            <button
-              onClick={openFleetAdmin}
-              className={`nav-link ${activePage === 'fleet' ? 'nav-link-active' : ''}`}
-            >
-              Fleet Command (Admin)
+            <button onClick={() => setActivePage('fleet')} className={`nav-link ${activePage === 'fleet' ? 'nav-link-active' : ''}`}>
+              Fleet Command
             </button>
           ) : null}
-          <button
-            onClick={openMyCabin}
-            className={`nav-link ${activePage === 'cabin' ? 'nav-link-active' : ''}`}
-          >
-            {isAdmin ? 'My Cabin (Profile)' : 'Student Profile'}
+          <button onClick={() => setActivePage('cabin')} className={`nav-link ${activePage === 'cabin' ? 'nav-link-active' : ''}`}>
+            Profile
           </button>
-          {isAdmin ? (
-            <button onClick={openNewShip} className="bg-blue-600 px-5 py-2 rounded-full hover:bg-blue-500 transition">
-              Launch New Ship
-            </button>
-          ) : null}
           <button onClick={handleLogout} className="bg-white text-black px-5 py-2 rounded-full font-semibold hover:bg-slate-200 transition">
             Logout
           </button>
@@ -374,21 +361,21 @@ function App() {
         <main className="max-w-7xl mx-auto py-16 px-6">
           <header className="mb-12">
             <h2 className="text-4xl font-extrabold mb-2">Admin Command Center</h2>
-            <p className="text-slate-400">Manage courses, monitor fleet activity, and launch new training ships.</p>
+            <p className="text-slate-400">See who enrolled and assignment completion progress.</p>
           </header>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <section className="ship-card p-8 rounded-3xl">
               <p className="text-slate-400 text-sm">Active Courses</p>
-              <h3 className="text-4xl font-extrabold mt-2">14</h3>
+              <h3 className="text-4xl font-extrabold mt-2">{COURSES.length}</h3>
             </section>
             <section className="ship-card p-8 rounded-3xl ship-delay-1">
               <p className="text-slate-400 text-sm">Total Students</p>
-              <h3 className="text-4xl font-extrabold mt-2">329</h3>
+              <h3 className="text-4xl font-extrabold mt-2">{totalStudents}</h3>
             </section>
             <section className="ship-card p-8 rounded-3xl">
-              <p className="text-slate-400 text-sm">Pending Reviews</p>
-              <h3 className="text-4xl font-extrabold mt-2">18</h3>
+              <p className="text-slate-400 text-sm">Assignments Completed</p>
+              <h3 className="text-4xl font-extrabold mt-2">{totalCompletedAssignments}</h3>
             </section>
           </div>
         </main>
@@ -397,198 +384,153 @@ function App() {
       {!isAdmin && activePage === 'home' ? (
         <main className="max-w-7xl mx-auto py-16 px-6">
           <header className="mb-12">
-            <h2 className="text-4xl font-extrabold mb-2">Student Home</h2>
-            <p className="text-slate-400">Track your learning journey, assignments, and upcoming sessions.</p>
+            <h2 className="text-4xl font-extrabold mb-2">Student Portal</h2>
+            <p className="text-slate-400">Enroll in courses and complete assignments with study materials.</p>
           </header>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
             <section className="ship-card p-8 rounded-3xl">
               <p className="text-slate-400 text-sm">Enrolled Courses</p>
-              <h3 className="text-4xl font-extrabold mt-2">5</h3>
+              <h3 className="text-4xl font-extrabold mt-2">{studentEnrollments.length}</h3>
             </section>
             <section className="ship-card p-8 rounded-3xl ship-delay-1">
               <p className="text-slate-400 text-sm">Assignments Due</p>
-              <h3 className="text-4xl font-extrabold mt-2">3</h3>
+              <h3 className="text-4xl font-extrabold mt-2">{studentStats.total - studentStats.completed}</h3>
             </section>
             <section className="ship-card p-8 rounded-3xl">
               <p className="text-slate-400 text-sm">Progress</p>
-              <h3 className="text-4xl font-extrabold mt-2">72%</h3>
+              <h3 className="text-4xl font-extrabold mt-2">
+                {studentStats.total ? `${Math.round((studentStats.completed / studentStats.total) * 100)}%` : '0%'}
+              </h3>
             </section>
           </div>
+
+          <section className="space-y-6">
+            {COURSES.map((course) => {
+              const enrollment = getEnrollment(currentUser.email, course.id)
+              const enrolled = Boolean(enrollment)
+
+              return (
+                <article key={course.id} className="ship-card p-8 rounded-3xl">
+                  <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+                    <div>
+                      <p className="text-slate-400 text-xs uppercase tracking-wider">{course.category}</p>
+                      <h3 className="text-2xl font-bold">{course.title}</h3>
+                    </div>
+                    <button type="button" className="auth-submit" onClick={() => handleEnroll(course.id)} disabled={enrolled}>
+                      {enrolled ? 'Enrolled' : 'Enroll'}
+                    </button>
+                  </div>
+
+                  <p className="text-slate-300 mb-5">{course.description}</p>
+
+                  {enrolled ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <h4 className="text-lg font-semibold mb-3">Assignments</h4>
+                        <div className="space-y-3">
+                          {course.assignments.map((assignment) => {
+                            const done = enrollment.completedAssignmentIds.includes(assignment.id)
+
+                            return (
+                              <div key={assignment.id} className="cabin-log assignment-row">
+                                <div>
+                                  <p className="font-semibold">{assignment.title}</p>
+                                  <p className="text-slate-400 text-xs">Due: {assignment.dueDate}</p>
+                                </div>
+                                <button
+                                  type="button"
+                                  className={`assignment-toggle ${done ? 'assignment-toggle-done' : ''}`}
+                                  onClick={() => toggleAssignmentCompletion(course.id, assignment.id)}
+                                >
+                                  {done ? 'Completed' : 'Mark Complete'}
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="text-lg font-semibold mb-3">Study Materials</h4>
+                        <div className="space-y-3">
+                          {course.materials.map((material) => (
+                            <div key={material.id} className="cabin-log">
+                              <p className="font-semibold">{material.title}</p>
+                              <p className="text-slate-400 text-xs">Type: {material.type}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-slate-400 text-sm">Enroll to unlock assignments and study materials.</p>
+                  )}
+                </article>
+              )
+            })}
+          </section>
         </main>
       ) : null}
 
-      {isAdmin && activePage === 'fleet' && !currentShip ? (
-        <main id="fleet-dashboard" className="max-w-7xl mx-auto py-16 px-6">
+      {isAdmin && activePage === 'fleet' ? (
+        <main className="max-w-7xl mx-auto py-16 px-6">
           <header className="mb-12">
-            <h2 className="text-4xl font-extrabold mb-2">Course Fleet</h2>
-            <p className="text-slate-400">Select a vessel to manage your curriculum and students.</p>
+            <h2 className="text-4xl font-extrabold mb-2">Course Enrollment and Assignment Status</h2>
+            <p className="text-slate-400">Admin visibility for each enrolled student.</p>
           </header>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-            <div className="ship-card p-8 rounded-3xl cursor-pointer group">
-              <div className="flex justify-between items-start mb-6">
-                <span className="text-xs font-bold uppercase tracking-widest text-blue-400">Full Stack</span>
-                <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center" aria-hidden="true"></div>
-              </div>
-              <h3 className="text-2xl font-bold mb-2">Advanced React Ops</h3>
-              <p className="text-slate-400 text-sm mb-6">
-                Mastering hooks, performance, and fleet-scale architecture.
-              </p>
-              <div className="flex items-center justify-between mt-auto">
-                <div className="text-sm">
-                  <span className="block font-bold">42 Students</span>
-                  <span className="text-slate-500 text-xs">On board</span>
-                </div>
-                <button
-                  onClick={() => boardShip('Advanced React Ops')}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity bg-white text-black px-4 py-2 rounded-xl font-bold text-sm"
-                >
-                  Board Ship
-                </button>
-              </div>
-            </div>
+          <div className="space-y-6">
+            {COURSES.map((course) => {
+              const courseEnrollments = enrollments.filter((e) => e.courseId === course.id)
 
-            <div className="ship-card p-8 rounded-3xl cursor-pointer group ship-delay-1">
-              <div className="flex justify-between items-start mb-6">
-                <span className="text-xs font-bold uppercase tracking-widest text-purple-400">Database</span>
-                <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center" aria-hidden="true"></div>
-              </div>
-              <h3 className="text-2xl font-bold mb-2">PostgreSQL Deep Dive</h3>
-              <p className="text-slate-400 text-sm mb-6">Query optimization and relational data charting.</p>
-              <div className="flex items-center justify-between mt-auto">
-                <div className="text-sm">
-                  <span className="block font-bold">128 Students</span>
-                  <span className="text-slate-500 text-xs">On board</span>
-                </div>
-                <button
-                  onClick={() => boardShip('PostgreSQL Deep Dive')}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity bg-white text-black px-4 py-2 rounded-xl font-bold text-sm"
-                >
-                  Board Ship
-                </button>
-              </div>
-            </div>
+              return (
+                <section key={course.id} className="ship-card p-8 rounded-3xl">
+                  <div className="flex justify-between items-center mb-5 gap-3 flex-wrap">
+                    <h3 className="text-2xl font-bold">{course.title}</h3>
+                    <p className="text-slate-300 text-sm">Enrolled: {courseEnrollmentCounts[course.id]}</p>
+                  </div>
+
+                  {courseEnrollments.length === 0 ? (
+                    <p className="text-slate-400 text-sm">No students enrolled yet.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {courseEnrollments.map((enrollment) => {
+                        const student = accounts.find((a) => a.email === enrollment.studentEmail)
+                        return (
+                          <div key={`${enrollment.studentEmail}-${course.id}`} className="admin-row">
+                            <div>
+                              <p className="font-semibold">{student?.name || enrollment.studentEmail}</p>
+                              <p className="text-slate-400 text-xs">{enrollment.studentEmail}</p>
+                            </div>
+                            <p className="text-slate-200 text-sm">
+                              Assignments completed: {enrollment.completedAssignmentIds.length}/{course.assignments.length}
+                            </p>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </section>
+              )
+            })}
           </div>
-        </main>
-      ) : null}
-
-      {isAdmin && activePage === 'fleet' && currentShip ? (
-        <main id="course-interior" className="max-w-7xl mx-auto py-16 px-6">
-          <header className="mb-12">
-            <h2 id="current-ship-title" className="text-4xl font-extrabold mb-2">
-              {currentShip}
-            </h2>
-            <p className="text-slate-400">You are now inside this vessel.</p>
-          </header>
-          <button onClick={openFleetAdmin} className="bg-white text-black px-4 py-2 rounded-xl font-bold text-sm">
-            Return to Fleet
-          </button>
         </main>
       ) : null}
 
       {activePage === 'cabin' ? (
-        <main id="my-cabin-page" className="max-w-7xl mx-auto py-16 px-6">
+        <main className="max-w-7xl mx-auto py-16 px-6">
           <header className="mb-12">
-            <h2 className="text-4xl font-extrabold mb-2">{isAdmin ? 'My Cabin' : 'Student Profile'}</h2>
-            <p className="text-slate-400">
-              {isAdmin
-                ? 'Manage your captain profile, assignments, and voyage settings.'
-                : 'View your profile, enrolled courses, and learning progress.'}
-            </p>
-          </header>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <section className="ship-card p-8 rounded-3xl md:col-span-1">
-              <div className="w-20 h-20 rounded-full bg-cyan-400/30 flex items-center justify-center text-3xl mb-5">
-                [Compass]
-              </div>
-              <h3 className="text-2xl font-bold">{isAdmin ? 'Captain Harsh' : 'Cadet Harsh'}</h3>
-              <p className="text-slate-400 text-sm mt-1 mb-6">
-                {isAdmin ? 'Fleet Admin - TealEdge Academy' : 'Student - TealEdge Academy'}
-              </p>
-              <div className="text-sm space-y-2">
-                <p>
-                  <span className="text-slate-400">Email:</span> captain@tealedge.com
-                </p>
-                <p>
-                  <span className="text-slate-400">Role:</span> {isAdmin ? 'Curriculum Commander' : 'Learner'}
-                </p>
-              </div>
-            </section>
-
-            <section className="ship-card p-8 rounded-3xl md:col-span-2 ship-delay-1">
-              <h3 className="text-2xl font-bold mb-4">Cabin Log</h3>
-              <div className="space-y-4 text-sm">
-                <div className="cabin-log">
-                  <p className="font-semibold">Fleet review completed</p>
-                  <p className="text-slate-400">2 minutes ago - Advanced React Ops has 4 pending submissions.</p>
-                </div>
-                <div className="cabin-log">
-                  <p className="font-semibold">New cadet onboarded</p>
-                  <p className="text-slate-400">25 minutes ago - PostgreSQL Deep Dive roster updated to 129.</p>
-                </div>
-                <div className="cabin-log">
-                  <p className="font-semibold">Route configuration synced</p>
-                  <p className="text-slate-400">1 hour ago - Notifications routed to cabin inbox.</p>
-                </div>
-              </div>
-            </section>
-          </div>
-        </main>
-      ) : null}
-
-      {isAdmin && activePage === 'new-ship' ? (
-        <main id="new-ship-page" className="max-w-5xl mx-auto py-16 px-6">
-          <header className="mb-10">
-            <h2 className="text-4xl font-extrabold mb-2">Launch New Ship</h2>
-            <p className="text-slate-400">Create a new course vessel and deploy it to your fleet.</p>
+            <h2 className="text-4xl font-extrabold mb-2">{isAdmin ? 'Admin Profile' : 'Student Profile'}</h2>
           </header>
 
           <section className="ship-card p-8 rounded-3xl">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <label className="block">
-                <span className="text-sm text-slate-300">Ship Name</span>
-                <input className="ship-input mt-2 w-full" type="text" placeholder="e.g. Node.js Navigation" />
-              </label>
-
-              <label className="block">
-                <span className="text-sm text-slate-300">Category</span>
-                <select className="ship-input mt-2 w-full" defaultValue="full-stack">
-                  <option value="full-stack">Full Stack</option>
-                  <option value="frontend">Frontend</option>
-                  <option value="backend">Backend</option>
-                  <option value="database">Database</option>
-                </select>
-              </label>
-
-              <label className="block md:col-span-2">
-                <span className="text-sm text-slate-300">Mission Brief</span>
-                <textarea
-                  className="ship-input mt-2 w-full min-h-28"
-                  placeholder="Write the course objective and expected outcomes..."
-                />
-              </label>
-
-              <label className="block">
-                <span className="text-sm text-slate-300">Capacity</span>
-                <input className="ship-input mt-2 w-full" type="number" defaultValue="60" min="1" />
-              </label>
-
-              <label className="block">
-                <span className="text-sm text-slate-300">Launch Date</span>
-                <input className="ship-input mt-2 w-full" type="date" />
-              </label>
-            </div>
-
-            <div className="mt-8 flex gap-4">
-              <button className="bg-blue-600 px-5 py-2 rounded-xl hover:bg-blue-500 transition font-semibold">
-                Create Ship
-              </button>
-              <button onClick={openFleetAdmin} className="bg-white text-black px-5 py-2 rounded-xl font-semibold">
-                Back to Fleet
-              </button>
-            </div>
+            <p className="mb-2"><span className="text-slate-400">Name:</span> {currentUser?.name}</p>
+            <p className="mb-2"><span className="text-slate-400">Email:</span> {currentUser?.email}</p>
+            <p className="mb-2"><span className="text-slate-400">Role:</span> {currentUser?.role}</p>
+            {!isAdmin ? (
+              <p><span className="text-slate-400">Assignments:</span> {studentStats.completed}/{studentStats.total || 0} completed</p>
+            ) : null}
           </section>
         </main>
       ) : null}
@@ -597,4 +539,3 @@ function App() {
 }
 
 export default App
-
