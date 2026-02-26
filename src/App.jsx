@@ -7,6 +7,12 @@ function App() {
   const [currentShip, setCurrentShip] = useState('')
   const [activePage, setActivePage] = useState('fleet')
 
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [authView, setAuthView] = useState('login')
+  const [authMessage, setAuthMessage] = useState('')
+  const [loginForm, setLoginForm] = useState({ email: '', password: '' })
+  const [signupForm, setSignupForm] = useState({ name: '', email: '', password: '', confirmPassword: '' })
+
   const boardShip = (shipName) => {
     setBoarding(true)
 
@@ -29,6 +35,214 @@ function App() {
   const openNewShip = () => {
     setActivePage('new-ship')
     setCurrentShip('')
+  }
+
+  const updateLoginForm = (event) => {
+    const { name, value } = event.target
+    setLoginForm((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const updateSignupForm = (event) => {
+    const { name, value } = event.target
+    setSignupForm((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleLogin = (event) => {
+    event.preventDefault()
+
+    if (!loginForm.email.trim() || !loginForm.password.trim()) {
+      setAuthMessage('Please enter both email and password.')
+      return
+    }
+
+    setAuthMessage('')
+    setIsAuthenticated(true)
+    setActivePage('fleet')
+    setCurrentShip('')
+    setLoginForm({ email: '', password: '' })
+  }
+
+  const handleSignup = (event) => {
+    event.preventDefault()
+
+    if (!signupForm.name.trim() || !signupForm.email.trim() || !signupForm.password.trim()) {
+      setAuthMessage('Please complete all required fields.')
+      return
+    }
+
+    if (signupForm.password !== signupForm.confirmPassword) {
+      setAuthMessage('Password and confirm password must match.')
+      return
+    }
+
+    setSignupForm({ name: '', email: '', password: '', confirmPassword: '' })
+    setAuthView('login')
+    setAuthMessage('Signup successful. Please log in to continue.')
+  }
+
+  const handleLogout = () => {
+    setIsAuthenticated(false)
+    setAuthView('login')
+    setAuthMessage('You have been logged out.')
+    setLoginForm({ email: '', password: '' })
+    setSignupForm({ name: '', email: '', password: '', confirmPassword: '' })
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="ocean text-white min-h-screen auth-layout">
+        <main className="auth-shell">
+          <div className="auth-brand">
+            <div className="bg-white rounded-lg px-3 py-2 inline-flex">
+              <img src={teelEdgeLogo} alt="TealEdge logo" className="h-14 w-auto" />
+            </div>
+            <h1 className="auth-title">TealEdge Fleet Portal</h1>
+            <p className="auth-subtitle">Sign in to command your fleet or create a new captain account.</p>
+          </div>
+
+          <section className="ship-card p-8 rounded-3xl auth-card">
+            <div className="auth-tabs" role="tablist" aria-label="Authentication tabs">
+              <button
+                type="button"
+                className={`auth-tab ${authView === 'login' ? 'auth-tab-active' : ''}`}
+                onClick={() => {
+                  setAuthView('login')
+                  setAuthMessage('')
+                }}
+              >
+                Login
+              </button>
+              <button
+                type="button"
+                className={`auth-tab ${authView === 'signup' ? 'auth-tab-active' : ''}`}
+                onClick={() => {
+                  setAuthView('signup')
+                  setAuthMessage('')
+                }}
+              >
+                Signup
+              </button>
+            </div>
+
+            {authMessage ? <p className="auth-message">{authMessage}</p> : null}
+
+            {authView === 'login' ? (
+              <form className="auth-form" onSubmit={handleLogin}>
+                <label className="block">
+                  <span className="text-sm text-slate-300">Email</span>
+                  <input
+                    className="ship-input mt-2 w-full"
+                    type="email"
+                    name="email"
+                    value={loginForm.email}
+                    onChange={updateLoginForm}
+                    placeholder="captain@tealedge.com"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="text-sm text-slate-300">Password</span>
+                  <input
+                    className="ship-input mt-2 w-full"
+                    type="password"
+                    name="password"
+                    value={loginForm.password}
+                    onChange={updateLoginForm}
+                    placeholder="Enter your password"
+                  />
+                </label>
+
+                <button type="submit" className="auth-submit">
+                  Login
+                </button>
+
+                <p className="auth-switch">
+                  New here?{' '}
+                  <button
+                    type="button"
+                    className="auth-switch-link"
+                    onClick={() => {
+                      setAuthView('signup')
+                      setAuthMessage('')
+                    }}
+                  >
+                    Create an account
+                  </button>
+                </p>
+              </form>
+            ) : (
+              <form className="auth-form" onSubmit={handleSignup}>
+                <label className="block">
+                  <span className="text-sm text-slate-300">Full Name</span>
+                  <input
+                    className="ship-input mt-2 w-full"
+                    type="text"
+                    name="name"
+                    value={signupForm.name}
+                    onChange={updateSignupForm}
+                    placeholder="Captain Name"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="text-sm text-slate-300">Email</span>
+                  <input
+                    className="ship-input mt-2 w-full"
+                    type="email"
+                    name="email"
+                    value={signupForm.email}
+                    onChange={updateSignupForm}
+                    placeholder="captain@tealedge.com"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="text-sm text-slate-300">Password</span>
+                  <input
+                    className="ship-input mt-2 w-full"
+                    type="password"
+                    name="password"
+                    value={signupForm.password}
+                    onChange={updateSignupForm}
+                    placeholder="Create a password"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="text-sm text-slate-300">Confirm Password</span>
+                  <input
+                    className="ship-input mt-2 w-full"
+                    type="password"
+                    name="confirmPassword"
+                    value={signupForm.confirmPassword}
+                    onChange={updateSignupForm}
+                    placeholder="Repeat your password"
+                  />
+                </label>
+
+                <button type="submit" className="auth-submit">
+                  Signup
+                </button>
+
+                <p className="auth-switch">
+                  Already have an account?{' '}
+                  <button
+                    type="button"
+                    className="auth-switch-link"
+                    onClick={() => {
+                      setAuthView('login')
+                      setAuthMessage('')
+                    }}
+                  >
+                    Login here
+                  </button>
+                </p>
+              </form>
+            )}
+          </section>
+        </main>
+      </div>
+    )
   }
 
   return (
@@ -64,6 +278,9 @@ function App() {
           </button>
           <button onClick={openNewShip} className="bg-blue-600 px-5 py-2 rounded-full hover:bg-blue-500 transition">
             Launch New Ship
+          </button>
+          <button onClick={handleLogout} className="bg-white text-black px-5 py-2 rounded-full font-semibold hover:bg-slate-200 transition">
+            Logout
           </button>
         </div>
       </nav>
