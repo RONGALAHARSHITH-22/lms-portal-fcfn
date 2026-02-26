@@ -2,16 +2,19 @@ import { useState } from 'react'
 import './App.css'
 import teelEdgeLogo from './assets/teel-edge-logo.svg'
 
+const ADMIN_SIGNUP_KEY = 'FSAD'
+
 function App() {
   const [boarding, setBoarding] = useState(false)
   const [currentShip, setCurrentShip] = useState('')
-  const [activePage, setActivePage] = useState('fleet')
+  const [activePage, setActivePage] = useState('home')
+  const [selectedRole, setSelectedRole] = useState('admin')
 
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [authView, setAuthView] = useState('login')
   const [authMessage, setAuthMessage] = useState('')
   const [loginForm, setLoginForm] = useState({ email: '', password: '' })
-  const [signupForm, setSignupForm] = useState({ name: '', email: '', password: '', confirmPassword: '' })
+  const [signupForm, setSignupForm] = useState({ name: '', email: '', password: '', confirmPassword: '', role: 'student', adminKey: '' })
 
   const boardShip = (shipName) => {
     setBoarding(true)
@@ -24,6 +27,11 @@ function App() {
 
   const openFleetAdmin = () => {
     setActivePage('fleet')
+    setCurrentShip('')
+  }
+
+  const openHome = () => {
+    setActivePage('home')
     setCurrentShip('')
   }
 
@@ -57,7 +65,7 @@ function App() {
 
     setAuthMessage('')
     setIsAuthenticated(true)
-    setActivePage('fleet')
+    setActivePage('home')
     setCurrentShip('')
     setLoginForm({ email: '', password: '' })
   }
@@ -75,9 +83,28 @@ function App() {
       return
     }
 
-    setSignupForm({ name: '', email: '', password: '', confirmPassword: '' })
+    if (signupForm.role === 'admin') {
+      if (signupForm.adminKey !== ADMIN_SIGNUP_KEY) {
+        setAuthMessage('Invalid admin signup key.')
+        return
+      }
+
+      if (!signupForm.email.trim().toLowerCase().endsWith('@tealedge.com')) {
+        setAuthMessage('Admin signup requires a @tealedge.com email.')
+        return
+      }
+
+      const strongAdminPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{10,}$/
+      if (!strongAdminPassword.test(signupForm.password)) {
+        setAuthMessage('Admin password must be at least 10 chars with uppercase, lowercase, number, and symbol.')
+        return
+      }
+    }
+
+    setSignupForm({ name: '', email: '', password: '', confirmPassword: '', role: 'student', adminKey: '' })
     setAuthView('login')
-    setAuthMessage('Signup successful. Please log in to continue.')
+    setSelectedRole(signupForm.role)
+    setAuthMessage(`${signupForm.role === 'admin' ? 'Admin' : 'Student'} signup successful. Please log in to continue.`)
   }
 
   const handleLogout = () => {
@@ -85,8 +112,10 @@ function App() {
     setAuthView('login')
     setAuthMessage('You have been logged out.')
     setLoginForm({ email: '', password: '' })
-    setSignupForm({ name: '', email: '', password: '', confirmPassword: '' })
+    setSignupForm({ name: '', email: '', password: '', confirmPassword: '', role: 'student', adminKey: '' })
   }
+
+  const isAdmin = selectedRole === 'admin'
 
   if (!isAuthenticated) {
     return (
@@ -128,6 +157,26 @@ function App() {
 
             {authView === 'login' ? (
               <form className="auth-form" onSubmit={handleLogin}>
+                <div>
+                  <p className="auth-field-label">Role</p>
+                  <div className="role-switch" role="tablist" aria-label="Select role">
+                    <button
+                      type="button"
+                      className={`role-switch-option ${selectedRole === 'admin' ? 'role-switch-option-active' : ''}`}
+                      onClick={() => setSelectedRole('admin')}
+                    >
+                      Admin
+                    </button>
+                    <button
+                      type="button"
+                      className={`role-switch-option ${selectedRole === 'student' ? 'role-switch-option-active' : ''}`}
+                      onClick={() => setSelectedRole('student')}
+                    >
+                      Student
+                    </button>
+                  </div>
+                </div>
+
                 <label className="block">
                   <span className="text-sm text-slate-300">Email</span>
                   <input
@@ -172,6 +221,26 @@ function App() {
               </form>
             ) : (
               <form className="auth-form" onSubmit={handleSignup}>
+                <div>
+                  <p className="auth-field-label">Signup Role</p>
+                  <div className="role-switch" role="tablist" aria-label="Select signup role">
+                    <button
+                      type="button"
+                      className={`role-switch-option ${signupForm.role === 'student' ? 'role-switch-option-active' : ''}`}
+                      onClick={() => setSignupForm((prev) => ({ ...prev, role: 'student', adminKey: '' }))}
+                    >
+                      Student
+                    </button>
+                    <button
+                      type="button"
+                      className={`role-switch-option ${signupForm.role === 'admin' ? 'role-switch-option-active' : ''}`}
+                      onClick={() => setSignupForm((prev) => ({ ...prev, role: 'admin' }))}
+                    >
+                      Admin
+                    </button>
+                  </div>
+                </div>
+
                 <label className="block">
                   <span className="text-sm text-slate-300">Full Name</span>
                   <input
@@ -220,6 +289,23 @@ function App() {
                   />
                 </label>
 
+                {signupForm.role === 'admin' ? (
+                  <>
+                    <label className="block">
+                      <span className="text-sm text-slate-300">Admin Signup Key</span>
+                      <input
+                        className="ship-input mt-2 w-full"
+                        type="password"
+                        name="adminKey"
+                        value={signupForm.adminKey}
+                        onChange={updateSignupForm}
+                        placeholder="Enter admin invite key"
+                      />
+                    </label>
+                    <p className="auth-helper">Admin requires @tealedge.com email and a strong password.</p>
+                  </>
+                ) : null}
+
                 <button type="submit" className="auth-submit">
                   Signup
                 </button>
@@ -265,27 +351,85 @@ function App() {
         </div>
         <div className="space-x-8 flex items-center">
           <button
-            onClick={openFleetAdmin}
-            className={`nav-link ${activePage === 'fleet' ? 'nav-link-active' : ''}`}
+            onClick={openHome}
+            className={`nav-link ${activePage === 'home' ? 'nav-link-active' : ''}`}
           >
-            Fleet Command (Admin)
+            {isAdmin ? 'Admin Home' : 'Student Home'}
           </button>
+          {isAdmin ? (
+            <button
+              onClick={openFleetAdmin}
+              className={`nav-link ${activePage === 'fleet' ? 'nav-link-active' : ''}`}
+            >
+              Fleet Command (Admin)
+            </button>
+          ) : null}
           <button
             onClick={openMyCabin}
             className={`nav-link ${activePage === 'cabin' ? 'nav-link-active' : ''}`}
           >
-            My Cabin (Profile)
+            {isAdmin ? 'My Cabin (Profile)' : 'Student Profile'}
           </button>
-          <button onClick={openNewShip} className="bg-blue-600 px-5 py-2 rounded-full hover:bg-blue-500 transition">
-            Launch New Ship
-          </button>
+          {isAdmin ? (
+            <button onClick={openNewShip} className="bg-blue-600 px-5 py-2 rounded-full hover:bg-blue-500 transition">
+              Launch New Ship
+            </button>
+          ) : null}
           <button onClick={handleLogout} className="bg-white text-black px-5 py-2 rounded-full font-semibold hover:bg-slate-200 transition">
             Logout
           </button>
         </div>
       </nav>
 
-      {activePage === 'fleet' && !currentShip ? (
+      {isAdmin && activePage === 'home' ? (
+        <main className="max-w-7xl mx-auto py-16 px-6">
+          <header className="mb-12">
+            <h2 className="text-4xl font-extrabold mb-2">Admin Command Center</h2>
+            <p className="text-slate-400">Manage courses, monitor fleet activity, and launch new training ships.</p>
+          </header>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <section className="ship-card p-8 rounded-3xl">
+              <p className="text-slate-400 text-sm">Active Courses</p>
+              <h3 className="text-4xl font-extrabold mt-2">14</h3>
+            </section>
+            <section className="ship-card p-8 rounded-3xl ship-delay-1">
+              <p className="text-slate-400 text-sm">Total Students</p>
+              <h3 className="text-4xl font-extrabold mt-2">329</h3>
+            </section>
+            <section className="ship-card p-8 rounded-3xl">
+              <p className="text-slate-400 text-sm">Pending Reviews</p>
+              <h3 className="text-4xl font-extrabold mt-2">18</h3>
+            </section>
+          </div>
+        </main>
+      ) : null}
+
+      {!isAdmin && activePage === 'home' ? (
+        <main className="max-w-7xl mx-auto py-16 px-6">
+          <header className="mb-12">
+            <h2 className="text-4xl font-extrabold mb-2">Student Home</h2>
+            <p className="text-slate-400">Track your learning journey, assignments, and upcoming sessions.</p>
+          </header>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <section className="ship-card p-8 rounded-3xl">
+              <p className="text-slate-400 text-sm">Enrolled Courses</p>
+              <h3 className="text-4xl font-extrabold mt-2">5</h3>
+            </section>
+            <section className="ship-card p-8 rounded-3xl ship-delay-1">
+              <p className="text-slate-400 text-sm">Assignments Due</p>
+              <h3 className="text-4xl font-extrabold mt-2">3</h3>
+            </section>
+            <section className="ship-card p-8 rounded-3xl">
+              <p className="text-slate-400 text-sm">Progress</p>
+              <h3 className="text-4xl font-extrabold mt-2">72%</h3>
+            </section>
+          </div>
+        </main>
+      ) : null}
+
+      {isAdmin && activePage === 'fleet' && !currentShip ? (
         <main id="fleet-dashboard" className="max-w-7xl mx-auto py-16 px-6">
           <header className="mb-12">
             <h2 className="text-4xl font-extrabold mb-2">Course Fleet</h2>
@@ -340,7 +484,7 @@ function App() {
         </main>
       ) : null}
 
-      {activePage === 'fleet' && currentShip ? (
+      {isAdmin && activePage === 'fleet' && currentShip ? (
         <main id="course-interior" className="max-w-7xl mx-auto py-16 px-6">
           <header className="mb-12">
             <h2 id="current-ship-title" className="text-4xl font-extrabold mb-2">
@@ -357,8 +501,12 @@ function App() {
       {activePage === 'cabin' ? (
         <main id="my-cabin-page" className="max-w-7xl mx-auto py-16 px-6">
           <header className="mb-12">
-            <h2 className="text-4xl font-extrabold mb-2">My Cabin</h2>
-            <p className="text-slate-400">Manage your captain profile, assignments, and voyage settings.</p>
+            <h2 className="text-4xl font-extrabold mb-2">{isAdmin ? 'My Cabin' : 'Student Profile'}</h2>
+            <p className="text-slate-400">
+              {isAdmin
+                ? 'Manage your captain profile, assignments, and voyage settings.'
+                : 'View your profile, enrolled courses, and learning progress.'}
+            </p>
           </header>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -366,14 +514,16 @@ function App() {
               <div className="w-20 h-20 rounded-full bg-cyan-400/30 flex items-center justify-center text-3xl mb-5">
                 [Compass]
               </div>
-              <h3 className="text-2xl font-bold">Captain Harsh</h3>
-              <p className="text-slate-400 text-sm mt-1 mb-6">Fleet Admin - TealEdge Academy</p>
+              <h3 className="text-2xl font-bold">{isAdmin ? 'Captain Harsh' : 'Cadet Harsh'}</h3>
+              <p className="text-slate-400 text-sm mt-1 mb-6">
+                {isAdmin ? 'Fleet Admin - TealEdge Academy' : 'Student - TealEdge Academy'}
+              </p>
               <div className="text-sm space-y-2">
                 <p>
                   <span className="text-slate-400">Email:</span> captain@tealedge.com
                 </p>
                 <p>
-                  <span className="text-slate-400">Role:</span> Curriculum Commander
+                  <span className="text-slate-400">Role:</span> {isAdmin ? 'Curriculum Commander' : 'Learner'}
                 </p>
               </div>
             </section>
@@ -399,7 +549,7 @@ function App() {
         </main>
       ) : null}
 
-      {activePage === 'new-ship' ? (
+      {isAdmin && activePage === 'new-ship' ? (
         <main id="new-ship-page" className="max-w-5xl mx-auto py-16 px-6">
           <header className="mb-10">
             <h2 className="text-4xl font-extrabold mb-2">Launch New Ship</h2>
